@@ -5,52 +5,121 @@ import torch.nn as nn
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
         super().__init()
-    
+        ## Used reference 1 to write
+        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.batchNorm1 = nn.BatchNorm2d(channels)
+        self.relu1 = nn.ReLU()
+        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.batchNorm2 = nn.BatchNorm2d(channels)
+        self.relu2 = nn.ReLU()
+
+    def forward(self, x):
+        residual = x
+        x = self.conv1(x)
+        x = self.batchNorm1(x)
+        x = self.relu1(x)
+        x = self.conv2(x)
+        x = self.batchNorm2(x)
+        x += residual
+        x = self.relu2(x)
+        return x
 
 
-
-    def forward()
 
 ## Might be easier to have them as classes
-class Encoder(nn.module):
+class Encoder(nn.Module):
     # kernel_size, stride, and padding can just be specified, and doesn't have
     # to be given
-    def __init__(self, in_channel, out_channel):
-        super().__init()
+    def __init__(self, in_channel):
+        super().__init__()
 
-        conv1 = nn.Conv2d(1, in_channel, kernel_size=4,
+        self.conv1 = nn.Conv2d(1, in_channel, kernel_size=4,
                           stride=2, padding=1)
-        batchNorm1 = nn.BatchNorm2d(in_channel)
+        self.batchNorm1 = nn.BatchNorm2d(in_channel)
+        self.relu1 = nn.ReLU()
+        # self.dropOut1 = nn.Dropout2d(0.2)
 
-        ## Need to consider how to include residual block in this properly
-        resBlock1 = ResidualBlock(in_channel)
+        self.resBlock1 = ResidualBlock(in_channel)
 
-        conv2 = nn.Conv2d(in_channel, in_channel*2, kernel_size=4,
+        self.conv2 = nn.Conv2d(in_channel, in_channel*2, kernel_size=4,
                           stride=2, padding=1)
-        in_channel *= 2;
-        batchNorm2 = nn.BatchNorm2d(in_channel)
+        in_channel *= 2
+        self.batchNorm2 = nn.BatchNorm2d(in_channel)
+        self.relu2 = nn.ReLU()
+        # self.dropOut2 = nn.Dropout2d(0.2)
 
-        conv3 = nn.Conv2d(in_channel, in_channel*2, kernel_size=4,
+        self.resBlock2 = ResidualBlock(in_channel)
+
+        self.conv3 = nn.Conv2d(in_channel, in_channel*2, kernel_size=4,
                           stride=2, padding=1)
-        in_channel *= 2;
-        batchNorm3 = nn.BatchNormwd(in_channel)
+        in_channel *= 2
+        self.batchNorm3 = nn.BatchNorm2d(in_channel)
+        self.relu3 = nn.ReLU()
+        # self.dropOut3 = nn.Dropout2d(0.2)
 
-        conv4 = nn.Conv2d(in_channel, in_channel*2, kernel_size=4,
+        self.resBlock3 = ResidualBlock(in_channel)
+
+        self.conv4 = nn.Conv2d(in_channel, in_channel*2, kernel_size=4,
                           stride=2, padding=1)
         
-        self.relu == nn.ReLU()
+        ## Considering adding the 
+        
+        self.relu4 = nn.ReLU()
+        
+
+
+    def forward(self, x):
+
+        x = self.conv1(x)
+        x = self.batchNorm1(x)
+        x = self.relu1(x)
+        # x = self.dropOut1(x)
+        ## Adding ResidualBlock here
+        x = self.resBlock1(x)
+
+        x = self.conv2(x)
+        x = self.batchNorm2(x)
+        x = self.relu2(x)
+        # x = self.dropOut2(x)
+        ## Adding ResidualBlock here
+        x = self.resBlock2(x)
+
+        x = self.conv3(x)
+        x = self.batchNorm3(x)
+        x = self.relu3(x)
+        # x = self.dropOut3(x)
+        x = self.resBlock3(x)
+
+        x = self.conv4(x)
+        x = self.relu4(x)
+
+class Decoder(nn.module):
+    def __init__(self, in_channel):
+        super().__init__()
+        
+        self.convTran1 = nn.ConvTranspose2d(in_channel, in_channel//2, 
+                                            kernel_size=4, stride=2, padding=1) ##4->8
+        in_channel //= 2
+        self.batchNorm1 = nn.BatchNorm2d(in_channel)
+        self.relu1 = nn.ReLU()
+
+        self.convTran2 = nn.ConvTranspose2d(in_channel, in_channel//2,
+                                            kernel_size=4, stride=2, padding=1) ##8->16
+        in_channel //= 2
+        self.batchNorm2 = nn.BatchNorm2d(in_channel)
+        self.relu2 = nn.ReLU()
         
 
     def forward(self, x):
 
-        x = conv1(x)
-        x = 
+        
 
-class Decoder(nn.module):
-    def __init__(self, in_channel, kernel_size, stride,
-                 padding, z_dim):
-        super().__init()
-        self.z_dim = z_dim
+
+# class Decoder(nn.module):
+#     def __init__(self, in_channel, kernel_size, stride,
+#                  padding, z_dim):
+#         super().__init()
+#         self.z_dim = z_dim
 
 
 
