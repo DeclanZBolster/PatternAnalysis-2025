@@ -93,8 +93,8 @@ class Encoder(nn.Module):
         x = self.conv4(x)
         x = self.relu4(x)
 
-class Decoder(nn.module):
-    def __init__(self, in_channel):
+class Decoder(nn.Module):
+    def __init__(self, in_channel, out_channel):
         super().__init__()
         
         self.convTran1 = nn.ConvTranspose2d(in_channel, in_channel//2, 
@@ -103,14 +103,58 @@ class Decoder(nn.module):
         self.batchNorm1 = nn.BatchNorm2d(in_channel)
         self.relu1 = nn.ReLU()
 
+        self.resBlock1 = ResidualBlock(in_channel)
+
         self.convTran2 = nn.ConvTranspose2d(in_channel, in_channel//2,
                                             kernel_size=4, stride=2, padding=1) ##8->16
         in_channel //= 2
         self.batchNorm2 = nn.BatchNorm2d(in_channel)
         self.relu2 = nn.ReLU()
+
+        self.resBlock2 = ResidualBlock(in_channel)
+
+        self.convTran3 = nn.ConvTranspose2d(in_channel, in_channel//2,
+                                            kernel_size=4, stride=2, padding=1) ## 16->32
+        in_channel //= 2
+        self.batchNorm3 = nn.BatchNorm2d(in_channel)
+        self.relu3 = nn.ReLU()
         
+        self.resBlock3 = ResidualBlock(in_channel)
+
+        self.convTran4 = nn.ConvTranspose2d(in_channel, out_channel,
+                                            kernel_size=4, stride=2, padding=1) ## 32->64
+
+        #self.relu4 = nn.ReLU()
+        self.sig = nn.Sigmoid()
+
 
     def forward(self, x):
+
+        x = self.convTran1(x)
+        x = self.batchNorm1(x)
+        x = self.relu1(x)
+
+        x = self.resBlock1(x)
+
+        x = self.convTran2(x)
+        x = self.batchNorm2(x)
+        x = self.relu2(x)
+
+        x = self.resBlock2(x)
+
+        x = self.convTran3(x)
+        x = self.batchNorm3(x)
+        x = self.relu3(x)
+
+        x = self.resBlock3(x)
+
+        x = self.convTran4(x)
+        #x = self.relu4(x)
+        
+        x = self.sig(x)
+
+        return x
+
 
         
 
