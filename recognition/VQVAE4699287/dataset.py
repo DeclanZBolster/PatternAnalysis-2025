@@ -8,20 +8,26 @@ import glob
 device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
 def loadTrainData(batchSize):
-    self.batchSize = batchSize
+    # self.batchSize = batchSize
     slices_trainPath = "C:\Users\decla\Desktop\2025\Semester2\COMP3710\A3_VQVAE\keras_slices_data\keras_slices_train"
     ## sorting implementation used from reference 9
-    slicesTrainList = sorted(glob.glob(f"{train_folder_path}/**.nii.gz", recursive=True))
+    slicesTrainList = sorted(glob.glob(f"{slices_trainPath}/**.nii.gz", recursive=True))
+    trainDataLoader = torch.utils.data.DataLoader(slicesTrainList, batch_size=batchSize, shuffle=True)
+    return trainDataLoader
 
 def loadValidateData(batchSize):
-    self.batchSize = batchSize
+    # self.batchSize = batchSize
     slices_validatePath = "C:\Users\decla\Desktop\2025\Semester2\COMP3710\A3_VQVAE\keras_slices_data\keras_slices_validate"
-    slicesValidateList = sorted(glob.glob(f"{train_folder_path}/**.nii.gz", recursive=True))
+    slicesValidateList = sorted(glob.glob(f"{slices_validatePath}/**.nii.gz", recursive=True))
+    validateDataLoader = torch.utils.data.DataLoader(slicesValidateList, batch_size=batchSize, shuffle=False)
+    return validateDataLoader
 
 def loadTestData(batchSize):
-    self.batchSize = batchSize
+    # self.batchSize = batchSize
     slices_testPath = "C:\Users\decla\Desktop\2025\Semester2\COMP3710\A3_VQVAE\keras_slices_data\keras_slices_test"
-    slicesTestList = sorted(glob.glob(f"{train_folder_path}/**.nii.gz", recursive=True))
+    slicesTestList = sorted(glob.glob(f"{slices_testPath}/**.nii.gz", recursive=True))
+    testDataLoader = torch.utils.data.DataLoader(slicesTestList, batch_size=batchSize, shuffle=False)
+    return testDataLoader
 
 
 
