@@ -154,9 +154,26 @@ class Decoder(nn.Module):
         x = self.sig(x)
 
         return x
+    
+
+# Reference 3 and 4
+class VectorQuantiser(nn.Module):
+    def __init__self(self, num_embeddings, embedding, beta=0.25):
+
+## Need to determine if this is necessary to include.
+class codeBook(nn.Module):
+    def __init__self(self):
 
 
-        
+## Need to implement this. 
+class VQVAE(nn.Module):
+    def __init__self(self, encoder, decoder, 
+                     vectorQuantiser):
+        self.encoder = encoder
+        self.decoder = decoder 
+        self.quantiser = vectorQuantiser
+
+    def forward(self, x):
 
 
 # class Decoder(nn.module):
@@ -167,69 +184,69 @@ class Decoder(nn.Module):
 
 
 
-class VQVAE(nn.module):
-    def __init__(self, z_dim=50):
-        super().__init()
-        self.z_dim = z_dim
-        # Encoder
-        self.enc_conv = nn.Sequential(
+# class VQVAE(nn.module):
+#     def __init__(self, z_dim=50):
+#         super().__init()
+#         self.z_dim = z_dim
+#         # Encoder
+#         self.enc_conv = nn.Sequential(
 
-            ## necessary image convolution
-            nn.Conv2d(1, 32, 4, 2, 1), ## 64->32
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            ## Will need to implement this
-            # ResidualBlock(32),
+#             ## necessary image convolution
+#             nn.Conv2d(1, 32, 4, 2, 1), ## 64->32
+#             nn.BatchNorm2d(32),
+#             nn.ReLU(),
+#             ## Will need to implement this
+#             # ResidualBlock(32),
 
-            ## Dropout to prevent overfitting
-            nn.Dropout2d(0.2),
+#             ## Dropout to prevent overfitting
+#             nn.Dropout2d(0.2),
 
-            nn.Conv2d(32, 64, 4, 2, 1), ## 32->16
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            ## Will need to implement this
-            # ResidualBlock(64),
-            nn.Dropout2d(0.2),
+#             nn.Conv2d(32, 64, 4, 2, 1), ## 32->16
+#             nn.BatchNorm2d(64),
+#             nn.ReLU(),
+#             ## Will need to implement this
+#             # ResidualBlock(64),
+#             nn.Dropout2d(0.2),
             
 
-            nn.Conv2d(64, 128, 4, 2, 1), ## 16->6
-            nn.BatchNorm2d(128),
-            nn.ReLU(), 
-            ## Will need to implement this
-            # ResidualBlock(128),
-            nn.Dropout2d(0.2),
+#             nn.Conv2d(64, 128, 4, 2, 1), ## 16->6
+#             nn.BatchNorm2d(128),
+#             nn.ReLU(), 
+#             ## Will need to implement this
+#             # ResidualBlock(128),
+#             nn.Dropout2d(0.2),
 
-            nn.Conv2d(128, 256, 4, 2, 1), ## 8->4
-            nn.ReLU(),
+#             nn.Conv2d(128, 256, 4, 2, 1), ## 8->4
+#             nn.ReLU(),
 
-            ## need to check if this is necessary between
-            ## image generation
-            nn.Flatten(),
-        )
+#             ## need to check if this is necessary between
+#             ## image generation
+#             nn.Flatten(),
+#         )
 
-        ## this is the intermittent point where the 
-        ## codebook is implemented
+#         ## this is the intermittent point where the 
+#         ## codebook is implemented
 
-        # CodeBook
+#         # CodeBook
 
-        # Decoder
-        self.fc = nn.Linear(z_dim, 256*4*4)
-        self.dec_conv = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, 4, 2, 1), #4->8
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
+#         # Decoder
+#         self.fc = nn.Linear(z_dim, 256*4*4)
+#         self.dec_conv = nn.Sequential(
+#             nn.ConvTranspose2d(256, 128, 4, 2, 1), #4->8
+#             nn.BatchNorm2d(128),
+#             nn.ReLU(),
 
-            nn.ConvTranspose2d(128, 64, 4, 2, 1), #8->16
-            nn.BatchNorm2d(128), 
-            nn.ReLU(), 
+#             nn.ConvTranspose2d(128, 64, 4, 2, 1), #8->16
+#             nn.BatchNorm2d(128), 
+#             nn.ReLU(), 
 
-            nn.ConvTranspose2d(64, 32, 4, 2, 1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, 1, 4, 2, 1),
+#             nn.ConvTranspose2d(64, 32, 4, 2, 1),
+#             nn.BatchNorm2d(32),
+#             nn.ReLU(),
+#             nn.ConvTranspose2d(32, 1, 4, 2, 1),
 
-            nn.Sigmoid()
+#             nn.Sigmoid()
 
-        )
+#         )
 
 

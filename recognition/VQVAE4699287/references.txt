@@ -1,0 +1,20 @@
+1:
+When writing the residual block for my VQVAE, I read this paper to help me:
+https://medium.com/@neetu.sigger/a-comprehensive-guide-to-understanding-and-implementing-bottleneck-residual-blocks-6b420706f66b
+
+2:
+I watched this video to understand the general structure of how the codeBook
+and discrete behaviour of the vectors in it.
+https://www.youtube.com/watch?v=ZNRNddl9owI
+
+3:
+Used to know the general structure of VQVAE, and the appropriate /beta value to use 
+https://arxiv.org/pdf/1711.00937
+
+
+4:
+Used to reference what the type signature might look like of a vectorQuantiser
+https://colab.research.google.com/github/keras-team/keras-io/blob/master/examples/generative/ipynb/vq_vae.ipynb?utm_source=chatgpt.com
+
+
+5:
