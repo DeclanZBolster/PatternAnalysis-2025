@@ -4,5 +4,9 @@ should be imported from “modules.py” and the data loader should be imported 
 sure to plot the losses and metrics during training
 """
 
+import torch
+
+device = torch.device("cuda" if torch.cuda.is_available else "cpu")
+
 
 
