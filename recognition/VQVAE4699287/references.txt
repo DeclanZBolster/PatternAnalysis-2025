@@ -33,3 +33,7 @@ https://github.com/zalandoresearch/pytorch-vq-vae/blob/master/vq-vae.ipynb
 Looking at the structure of the VQVAE model, that ties in everything together to run it 
 in a separate class.
 https://github.com/shakes76/PatternAnalysis-2024/pull/54/files#diff-d274b22575a94ddfbef2c22376203e436e2a25a44041532fc06a95aeaeabb7c7
+
+9:
+Used sorted(glob.glob(....)) for loading, when grabbing the subfolders to store as a sorted list
+https://github.com/shakes76/PatternAnalysis-2024/pull/60/files#diff-de408f0a3e34556cba7f2669d76a94b6ae567491a845aa109b67fa4981ef479d
