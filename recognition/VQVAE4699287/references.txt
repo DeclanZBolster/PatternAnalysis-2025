@@ -18,3 +18,16 @@ https://colab.research.google.com/github/keras-team/keras-io/blob/master/example
 
 
 5:
+Inspired by the type signature from this code base for the vectorQuantiser
+https://github.com/shakes76/PatternAnalysis-2024/pull/133/files#diff-ae5323d7b76e8ae717b053d5c11b6e16ad4c1cfb3e978c0403a6c6b795078b87
+
+6:
+Inspired by this in how to instantiate my codeBook.
+https://github.com/shakes76/PatternAnalysis-2024/pull/17/files#diff-d7dbfe0b395d1329b4c1a125b291b685251e75a2d59f214d82f425faeb4eed17
+
+7:
+Justifying the flattening at the start of the quantisation.
+https://github.com/zalandoresearch/pytorch-vq-vae/blob/master/vq-vae.ipynb
+
+
+

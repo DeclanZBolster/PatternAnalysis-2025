@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 
 
@@ -157,8 +158,64 @@ class Decoder(nn.Module):
     
 
 # Reference 3 and 4
+## takes output from the encoder 
 class VectorQuantiser(nn.Module):
-    def __init__self(self, num_embeddings, embedding, beta=0.25):
+    ## beta = 0.25 was used in the paper from reference 3
+    ## Typer signature below from reference 5.
+    def __init__(self, num_embeddings, embedding_dim, beta=0.25):
+        super().__init__()
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
+        self.beta = beta
+        ## Reference 6 used here
+        self.codeBook = nn.Embedding(num_embeddings, embedding_dim)
+        ## Creating a uniform, random distribution of the weights
+        self.codeBook.weight.data.uniform_(-1/num_embeddings,
+                                           1/num_embeddings)
+
+    def forward(self, x):
+
+        ## compute which codeBook vector is closest to each
+        ## encoder output vector
+
+            ## Comparing each latent vector to all vectors in the codeBook,
+            ## so it is flattened into these 4 dimensions
+            ## (Reference 4)
+
+            ## Inspired form reference 7 on flattening the incoming
+            ## vector to match the expected 4D structure.
+        # convert inputs from BCHW -> BHWC, referenced in video from reference 2.
+        x = x.permute(0, 2, 3, 1).contiguous()
+        x_shape = x.shape
+
+        ## flattening input
+        flat_input = x.view(-1, self.embedding_dim)
+
+        ## Using the expanded version of formula 2 from the reference 3 paper
+        ## zq(x) = ek, where k = argminj||ze(x) − ej||2, and used direcly in reference 7
+
+        distances = (torch.sum(flat_input**2, dim=1, keepdim=True)
+                     + torch.sum(self.codeBook.weight**2, dim=1)
+                     - 2 * torch.matmul(flat_input, self.codeBook.weight.t()))
+        
+        ## Finding the index of the codeBook vector most similar to each vector input
+        codeBookIndex = torch.argmin(distances, dim=1)
+
+        ## Grabbing the discrete most-similar vector
+        quantisedVector = self.codeBook(codeBookIndex)
+        quantisedVector = quantisedVector.view(x_shape)
+
+        ## Straight-through resonator
+        
+
+
+
+
+        ## replace the input with that nearest code vector (discrete vectorisation)
+
+        ## use a straight-through estimator to allow gradients to flow
+
+
 
 ## Need to determine if this is necessary to include.
 class codeBook(nn.Module):
