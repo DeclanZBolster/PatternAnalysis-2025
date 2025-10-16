@@ -29,5 +29,7 @@ https://github.com/shakes76/PatternAnalysis-2024/pull/17/files#diff-d7dbfe0b395d
 Justifying the flattening at the start of the quantisation.
 https://github.com/zalandoresearch/pytorch-vq-vae/blob/master/vq-vae.ipynb
 
-
-
+8:
+Looking at the structure of the VQVAE model, that ties in everything together to run it 
+in a separate class.
+https://github.com/shakes76/PatternAnalysis-2024/pull/54/files#diff-d274b22575a94ddfbef2c22376203e436e2a25a44041532fc06a95aeaeabb7c7

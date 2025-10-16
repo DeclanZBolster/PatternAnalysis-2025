@@ -1,5 +1,7 @@
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
+
 
 
 
@@ -93,6 +95,8 @@ class Encoder(nn.Module):
 
         x = self.conv4(x)
         x = self.relu4(x)
+
+        return x
 
 class Decoder(nn.Module):
     def __init__(self, in_channel, out_channel):
@@ -206,7 +210,36 @@ class VectorQuantiser(nn.Module):
         quantisedVector = quantisedVector.view(x_shape)
 
         ## Straight-through resonator
-        
+        ## From reference 6, and mentioned in video of reference 2
+        quantisedVector = x + (x - quantisedVector).detach()
+
+        ## Need to account for losses
+        ## Using expanded equation 3 from refernce 3 and inspired by implementation
+        ## from reference 7
+        latentCommitLoss = self.beta * F.mse_loss(x.detach(), quantisedVector)
+        codeBookLoss = F.mse_loss(x, quantisedVector.detach())
+        loss = latentCommitLoss + codeBookLoss
+
+        ## Using reference 5 for expected return of the vectorQuantiser
+        return quantisedVector.permute(0, 2, 3, 1).contiguous(), loss, codeBookIndex
+
+
+class VQVAE(nn.Module):
+    def __init__(self, encoder, decoder,
+                 vectorQuantiser):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder 
+        self.quantiser = vectorQuantiser
+
+    def forward(self, x):
+
+        encoderOutput = self.encoder(x);
+        quantisedOutput, quantiseLoss, codeBookIndices = self.quantiser(encoderOutput)
+        decoderOutput = self.decoder(quantisedOutput)
+
+        return decoderOutput, quantiseLoss, codeBookIndices
+
 
 
 
