@@ -224,6 +224,7 @@ class VectorQuantiser(nn.Module):
         return quantisedVector.permute(0, 2, 3, 1).contiguous(), loss, codeBookIndex
 
 
+## using reference 8 as inspiration for implementation.
 class VQVAE(nn.Module):
     def __init__(self, encoder, decoder,
                  vectorQuantiser):
@@ -233,7 +234,8 @@ class VQVAE(nn.Module):
         self.quantiser = vectorQuantiser
 
     def forward(self, x):
-
+        
+        ## using reference 8 for inspiration on implementation
         encoderOutput = self.encoder(x);
         quantisedOutput, quantiseLoss, codeBookIndices = self.quantiser(encoderOutput)
         decoderOutput = self.decoder(quantisedOutput)
