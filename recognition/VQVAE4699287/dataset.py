@@ -190,6 +190,9 @@ class Load():
         path = "C:\\Users\\decla\\Desktop\\2025\\Semester2\\COMP3710\\A3_VQVAE\\keras_slices_data\\keras_slices_train"
         files = sorted(glob.glob(f"{path}/**.nii.gz", recursive=True))
         images = load_data_2D(files, normImage=normImage, early_stop=early_stop, target_shape=target_shape)
+        ##
+        images = images[0:5]
+        ##
         tensor_data = Load._prepare_tensor(images)
         return torch.utils.data.DataLoader(tensor_data, batch_size=batchSize, shuffle=True)
     
@@ -200,6 +203,9 @@ class Load():
         path = "C:\\Users\\decla\\Desktop\\2025\\Semester2\\COMP3710\\A3_VQVAE\\keras_slices_data\\keras_slices_validate"
         files = sorted(glob.glob(f"{path}/**.nii.gz", recursive=True))
         images = load_data_2D(files, normImage=normImage, target_shape=target_shape)
+        ##
+        images = images[0:5]
+        ##
         tensor_data = Load._prepare_tensor(images)
         return torch.utils.data.DataLoader(tensor_data, batch_size=batchSize, shuffle=False)
 
@@ -221,24 +227,28 @@ train_loader = Load.loadTrainData(batchSize=8, target_shape=(256,128))
 
 # train_loader = Load.loadTrainData(batchSize=8, target_shape=(256,128))
 
-# Iterate over batches
-for batch in train_loader:
-    print(batch.shape)  # e.g., torch.Size([8, 3, 256, 128])
-    
-    # Show each image manually; next image appears after closing the previous
-    for i in range(batch.shape[0]):
-        img = batch[i]
-        import matplotlib.pyplot as plt
-        plt.figure()
-        # Convert to HWC for matplotlib
-        
-        img_np = img.permute(1, 2, 0).numpy()
-        plt.imshow(img_np)
-        plt.axis('off')
-        plt.title(f"Image {i+1}")
-        plt.show()  # blocks until you close the window
+# ##############
 
-    break  # remove this if you want to go through all batches
+# # Iterate over batches
+# for batch in train_loader:
+#     print(batch.shape)  # e.g., torch.Size([8, 3, 256, 128])
+    
+#     # Show each image manually; next image appears after closing the previous
+#     for i in range(batch.shape[0]):
+#         img = batch[i]
+#         import matplotlib.pyplot as plt
+#         plt.figure()
+#         # Convert to HWC for matplotlib
+        
+#         img_np = img.permute(1, 2, 0).numpy()
+#         plt.imshow(img_np)
+#         plt.axis('off')
+#         plt.title(f"Image {i+1}")
+#         plt.show()  # blocks until you close the window
+
+#     break  # remove this if you want to go through all batches
+
+############
 
 # x = Load.loadTrainData(1)
 # showImage(x)

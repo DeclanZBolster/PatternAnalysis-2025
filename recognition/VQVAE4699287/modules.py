@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
-        super().__init()
+        super().__init__()
         ## Used reference 1 to write
         self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
         self.batchNorm1 = nn.BatchNorm2d(channels)
@@ -39,10 +39,10 @@ class ResidualBlock(nn.Module):
 class Encoder(nn.Module):
     # kernel_size, stride, and padding can just be specified, and doesn't have
     # to be given
-    def __init__(self, in_channel):
+    def __init__(self, in_channel, embeddingDim):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(1, in_channel, kernel_size=4,
+        self.conv1 = nn.Conv2d(3, in_channel, kernel_size=4,
                           stride=2, padding=1)
         self.batchNorm1 = nn.BatchNorm2d(in_channel)
         self.relu1 = nn.ReLU()
@@ -71,9 +71,13 @@ class Encoder(nn.Module):
         self.conv4 = nn.Conv2d(in_channel, in_channel*2, kernel_size=4,
                           stride=2, padding=1)
         
+        
+        
         ## Considering adding the 
         
         self.relu4 = nn.ReLU()
+
+        self.finalConv = nn.Conv2d(2*in_channel, embeddingDim, kernel_size=1)
         
 
 
@@ -101,6 +105,8 @@ class Encoder(nn.Module):
 
         x = self.conv4(x)
         x = self.relu4(x)
+
+        x = self.finalConv(x)
 
         return x
 
@@ -140,7 +146,6 @@ class Decoder(nn.Module):
 
 
     def forward(self, x):
-
         x = self.convTran1(x)
         x = self.batchNorm1(x)
         x = self.relu1(x)
@@ -217,7 +222,9 @@ class VectorQuantiser(nn.Module):
 
         ## Straight-through resonator
         ## From reference 6, and mentioned in video of reference 2
-        quantisedVector = x + (x - quantisedVector).detach()
+        # quantisedVector = x + (x - quantisedVector).detach()
+        quantisedVector = x + (quantisedVector - x).detach()
+
 
         ## Need to account for losses
         ## Using expanded equation 3 from refernce 3 and inspired by implementation
@@ -227,8 +234,8 @@ class VectorQuantiser(nn.Module):
         loss = latentCommitLoss + codeBookLoss
 
         ## Using reference 5 for expected return of the vectorQuantiser
-        return quantisedVector.permute(0, 2, 3, 1).contiguous(), loss, codeBookIndex
-
+        # return quantisedVector.permute(0, 2, 3, 1).contiguous(), loss, codeBookIndex
+        return quantisedVector.permute(0, 3, 1, 2).contiguous(), loss, codeBookIndex
 
 ## using reference 8 as inspiration for implementation.
 class VQVAE(nn.Module):
@@ -248,3 +255,31 @@ class VQVAE(nn.Module):
 
         return decoderOutput, quantiseLoss, codeBookIndices
 
+## add main,
+## then run save and load here for it
+
+if __name__ == "__main__":
+    print("Testing modules")
+    batchSize = 8
+    numEpochs = 5-4
+    learningRate = 1e-3
+    inChannels = 64
+    numEmbeddings = 512
+    embeddingDim = 64
+    outChannels = 3
+    targetShape = (256, 128)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    encoder = Encoder(inChannels, embeddingDim).to(device)
+    decoder = Decoder(in_channel=embeddingDim, out_channel=outChannels).to(device)
+    vqLayer = VectorQuantiser(num_embeddings=numEmbeddings, embedding_dim=embeddingDim).to(device)
+    model = VQVAE(encoder, decoder, vqLayer).to(device)
+
+    batch = torch.randn(5,3,256,128)
+    batch = batch.to(device)
+
+    reconTrain, vq_loss, _ = model(batch)
+
+    print("Input shape:", batch.shape)
+    print("VQ Loss:", vq_loss.item())
