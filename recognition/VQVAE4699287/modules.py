@@ -185,8 +185,14 @@ class VectorQuantiser(nn.Module):
         ## Reference 6 used here
         self.codeBook = nn.Embedding(num_embeddings, embedding_dim)
         ## Creating a uniform, random distribution of the weights
-        self.codeBook.weight.data.uniform_(-1/num_embeddings,
-                                           1/num_embeddings)
+        ## This might be too narrow.
+        #########################
+        # self.codeBook.weight.data.uniform_(-1/num_embeddings,
+        #                                    1/num_embeddings)
+        #######################
+        ## So, trying to change it to this to widen.
+        self.codeBook.weight.data.uniform_(-1/embedding_dim,
+                                           1/embedding_dim)
 
     def forward(self, x):
 
