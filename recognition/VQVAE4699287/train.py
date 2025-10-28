@@ -1,323 +1,199 @@
+## This is currently the best training file we have
+
+
 """
-“train.py" containing the source code for training, validating, testing and saving your model. The model
-should be imported from “modules.py” and the data loader should be imported from “dataset.py”. Make
-sure to plot the losses and metrics during training
+train.py — Train a VQ-VAE on NIfTI slices using modules.py and dataset.py
+
+Each epoch saves reconstructed images for visual tracking.
 """
 
-# import torch
+import os
+from datetime import datetime
 
-# from modules import *
-# from dataset import *
-
-# device = torch.device("cuda" if torch.cuda.is_available else "cpu")
-
-# ## Used for processing the images.
-# def showImage(img):
-#     import matplotlib.pyplot as plt
-#     import matplotlib.image as mpimg
-
-#     # Display the image
-#     plt.imshow(img)
-#     plt.title('My Image') # Optional: Add a title to the image
-#     plt.axis('off') # Optional: Turn off axis labels and ticks
-#     plt.show()
-
-# ## Hyper-parameters
-# batchSize = 1
-# epoch = 1
-
-# # ## Training
-# # trainDataLoader = Load.trainDataLoader(batchSize)
-# # class training():
-    
-# #     def loadModel(modelPath):
-# #         model = VQVAE()
-
-
-import torch 
+import torch
 import torch.nn as nn
 import torch.optim as optim
-from tqdm import tqdm 
-from dataset import Load 
-from modules import Encoder, Decoder, VectorQuantiser, VQVAE
-
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 import numpy as np
-
+import matplotlib.pyplot as plt
 from skimage.metrics import structural_similarity as ssim
 
-import matplotlib.pyplot as plt
+from modules import Encoder, Decoder, VectorQuantiser, VQVAE
+from dataset import MRI_dataset
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Helper functions
 
-batchSize = 8 - 7
-numEpochs = 20
-learningRate = 1e-3
-inChannels = 64
-numEmbeddings = 512
-embeddingDim = 64
-outChannels = 3 ## Cause colour lol
-targetShape = (256, 128)
-
-trainBestSSIM = 0;
-valBestSSIM = 0; ## Might do this as a list of the best ones?
+def batch_ssim(x, y, assume_minmax=False):
+    """Compute average SSIM for a batch."""
+    x_np = x.permute(0, 2, 3, 1).detach().cpu().numpy()
+    y_np = y.permute(0, 2, 3, 1).detach().cpu().numpy()
+    scores = []
+    for xi, yi in zip(x_np, y_np):
+        dr = 1.0 if assume_minmax else float(xi.max() - xi.min() or 1.0)
+        scores.append(ssim(xi, yi, channel_axis=-1, data_range=dr))
+    return float(np.mean(scores))
 
 
-validationLoss = 0
-validation_SSIM = 0
-
-## For saving best model
-bestModelSavedDir = "C:/Users/decla/Desktop/2025/Semester2/COMP3710/A3_savedModels"
-import os; os.makedirs(bestModelSavedDir, exist_ok=True)
-bestValLoss = float('inf')
-bestValSSIM = 0
-
-bestSSIM = 0
-
-
-## Loading the data
-train_loader = Load.loadTrainData(batchSize, target_shape=targetShape)
-validate_loader = Load.loadValidateData(batchSize, target_shape=targetShape)
-
-## Initiliasing the model
-encoder = Encoder(inChannels, embeddingDim).to(device)
-decoder = Decoder(in_channel=embeddingDim, out_channel=outChannels).to(device)
-vqLayer = VectorQuantiser(num_embeddings=numEmbeddings, embedding_dim=embeddingDim).to(device)
-model = VQVAE(encoder, decoder, vqLayer).to(device)
-
-## The optimiser and loss
-optimiser = optim.Adam(model.parameters(), lr=learningRate)
-criterion = nn.MSELoss()
-
-## The training loop
-
-trainLosses = []
-valLosses = []
-ssimScores = []
-
-valSSIM = []
-
-print("Undergoing Testing...")
-
-for epoch in range(numEpochs):
-    model.train()
-    runningLoss = 0.0
-    totalLoss = 0
-    totalReconLoss = 0
-    totalVQLoss = 0
-    totalSSIM = 0
-
-    loop = tqdm(train_loader, leave=False)
-    for batch in loop:
-    # for i in range(epoch):
-        # torch.Size([5, 1, 256, 128])
-        # batch = torch.randn(5,1,256,128)
-        batch = batch.to(device)
-
-        ## look at reference 9 training code when writing this section
-        optimiser.zero_grad()
-        reconTrainImages, vq_loss, _ = model(batch)
-
-        recon_loss = criterion(reconTrainImages, batch)
-        loss = recon_loss + vq_loss
+def save_recon_grid(x, recon, save_path, max_show=8):
+    """Save a grid comparing original vs reconstruction."""
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    b = min(x.size(0), max_show)
+    x_np = x[:b].detach().cpu().numpy()
+    r_np = recon[:b].detach().cpu().numpy()
+    plt.figure(figsize=(6, 2 * b))
+    for i in range(b):
+        ax = plt.subplot(b, 2, 2 * i + 1)
+        ax.imshow(x_np[i, 0], cmap="gray")
+        ax.set_title("Original")
+        ax.axis("off")
+        ax = plt.subplot(b, 2, 2 * i + 2)
+        ax.imshow(r_np[i, 0], cmap="gray")
+        ax.set_title("Reconstructed")
+        ax.axis("off")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.close()
 
 
+# Main training loop
 
-        ############
-        ## This replacing the above two lines because the loss is already calculated 
-        ## in the VQVAE vector quantiser
-        # vq_loss.backward()
-        ############
-        loss.backward()
-        #########
-        ## This above line may then be unnecessary if the vq_loss.backward()
-        optimiser.step()
-
-        ########
-        totalLoss += loss.item()
-        ########
-        ## .item() because I have already called .backward()
-        # totalLoss += vq_loss.item()
-
-        totalReconLoss += recon_loss.item()
-        totalVQLoss += vq_loss.item()
+def main():
+    ## Directories
 
 
-        runningLoss += loss.item() * batch.size(0)
+    TRAIN_DIR = "C:/Users/s4699287/Desktop/A3_LocalData/keras_slices_train"
+    VAL_DIR = "C:/Users/s4699287/Desktop/A3_LocalData/keras_slices_validate"
+    OUT_DIR = os.path.join(
+        "C:/Users/s4699287/Desktop/A3_localData/vqvae_outputs",
+        datetime.now().strftime("%Y%m%d_%H%M"),
+    )
 
-        ## Using the in-built SSIM function, so converting to numpy arrays
-        ## This permutation is necssary because the shape of the images
-        ## Is currently (batch size, 3, 256, 128)
-        ## But the ssim method expects the colour dimension to the be 
-        ## at the end of the method.
-        ## This is essentially computes the average SSIM over the batch.
-        batch_np = batch.permute(0, 2, 3, 1).detach().cpu().numpy()
-        recon_np = reconTrainImages.permute(0, 2, 3, 1).detach().cpu().numpy()
-        batch_ssims = [ssim(b, r, channel_axis=-1, data_range=1.0) for b, r in zip(batch_np, recon_np)]
-        avg_ssim = np.mean(batch_ssims)
-        totalSSIM += avg_ssim
-
-        loop.set_postfix(loss=loss.item(), ssim=avg_ssim)
-
-        ## Might do a single batch through the validation here.
-        ## Instead of doing validation at the end of every epoch.
-
-        ## Testing for one image here
-        # break
     
-    avgTrainLoss = totalLoss / len(train_loader)
-    avgReconLoss = totalReconLoss / len(train_loader)
-    avgVQLoss = totalVQLoss / len(train_loader)
-    avgTrainSSIM = totalSSIM / len(train_loader)
+    os.makedirs(OUT_DIR, exist_ok=True)
 
-    trainLosses.append(avgTrainLoss)
-    ssimScores.append(avgTrainSSIM)
+    ## Hyperparameters
+    BATCH_SIZE = 16
+    NUM_EPOCHS = 20
+    LEARNING_RATE = 3e-4
+    IN_CHANNELS = 64
+    # DECODE_IN_CHANNELS = 256
+    EMBEDDING_DIM = 64
+    NUM_EMBEDDINGS = 512
+    OUT_CHANNELS = 1
+    VAL_EVERY = 1
+    ASSUME_MINMAX = True  # True if you use min-max normalisation
 
-    if (avgTrainSSIM > bestSSIM) :
-        bestSSIM = avgTrainSSIM
-        ## Saving the best model
-        torch.save(model.state_dict(), "model.pth")
-        # torch.save(model.state_dict(), f"{bestModelSavedDir}/vqvae_best_loss.pt")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    ## Datasets and loaders
+    train_set = MRI_dataset(path=TRAIN_DIR, earlyStop=False)
+    val_set = MRI_dataset(path=VAL_DIR, earlyStop=False)
+    train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True)
+    val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True)
+
+    print(f"Loaded {len(train_set)} training and {len(val_set)} validation images.")
+
+    ## Model
+    encoder = Encoder(IN_CHANNELS, EMBEDDING_DIM).to(device)
+    decoder = Decoder(in_channel=EMBEDDING_DIM, out_channel=OUT_CHANNELS).to(device)
+    vq_layer = VectorQuantiser(num_embeddings=NUM_EMBEDDINGS, embedding_dim=EMBEDDING_DIM).to(device)
+    model = VQVAE(encoder, decoder, vq_layer).to(device)
+
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    criterion = nn.MSELoss()
+
+    ## Trackers
+    train_losses, val_losses, train_ssims, val_ssims = [], [], [], []
+    best_val_ssim = -1.0
 
 
-    print(f"Epoch: {epoch}")
-    print(f"trainLoss: {avgTrainLoss}") 
-    print(f"avgReconstructionLoss: {avgReconLoss}") 
-    print(f"averageVQLoss: {avgVQLoss}")
-    print(f"SSIM: {avgTrainSSIM}") 
-
-    print("Validation...")
+    ## Training loop
     
-    if (epoch % 5 == 0):
-        model.eval()
-        validationLoss = 0
-        valLossTotal = 0
-        validation_SSIM_Total = 0
-
-        with torch.no_grad():
-            for validBatch in validate_loader:
-                validBatch = validBatch.to(device)
-                reconValidImages, vqValidLoss, _ = model(validBatch)
-                valid_recon_loss = criterion(reconValidImages, validBatch)
-                validationLoss = valid_recon_loss + vqValidLoss
-                valLossTotal += validationLoss.item()
-
-                validBatch_np = validBatch.permute(0, 2, 3, 1).cpu().numpy()
-                validRecon_np = reconValidImages.permute(0, 2, 3, 1).cpu().numpy()
-                val_ssims = [ssim(b, r, channel_axis=-1, data_range=1.0) for b, r in zip(validBatch_np, validRecon_np)]
-                validation_SSIM_Total += np.mean(val_ssims)
-
-        avgValLoss = valLossTotal  / len(validate_loader)
-        avgValSSIM = validation_SSIM_Total / len(validate_loader)
-        valLosses.append(avgValLoss)
-        valSSIM.append(avgValSSIM)
-
-        if (avgValSSIM > bestSSIM):
-            bestSSIM = avgValSSIM
-
-            ## Saving the model
-            torch.save(model.state_dict(), f"{bestModelSavedDir}/vqvae_best_ssim.pt")
-
-        print(f"ValidationEpoch: {epoch}")
-        print(f"ValidationtrainLoss: {avgValLoss}") 
-        # print(f"ValidationAvgReconstructionLoss: {avgReconLoss}") 
-        # print(f"ValidationAverageVQLoss: {avgVQLoss}")
-        print(f"ValidationSSIM: {avgValSSIM}") 
-
+    for epoch in range(1, NUM_EPOCHS + 1):
         model.train()
-                
+        epoch_loss, epoch_ssim = 0.0, 0.0
 
-# # Original
-# ax = plt.subplot(2, n, i + 1)
-# plt.imshow(test_dataset[i].squeeze(), cmap="gray")
-# plt.axis("off")
-# # Reconstruction
-# ax = plt.subplot(2, n, i + 1 + n)
-# plt.imshow(reconstructions[i].squeeze(), cmap="gray")
+        print(f"\n--- Epoch {epoch}/{NUM_EPOCHS} ---")
+        pbar = tqdm(train_loader, desc=f"Training Epoch {epoch}")
 
-plt.figure()
-plt.plot(trainLosses, label="Train Loss")
-plt.plot(valLosses, label="Val Loss")
-plt.legend(); plt.title("Loss"); plt.xlabel("Epoch (val every 5)"); plt.tight_layout(); plt.show()
+        for batch in pbar:
+            batch = batch.to(device)
 
-plt.figure()
-plt.plot(ssimScores, label="Train SSIM")
-# If you also want val SSIM, track it in a list and plot similarly
-plt.legend(); plt.title("SSIM"); plt.xlabel("Epoch"); plt.tight_layout(); plt.show()
+            optimizer.zero_grad()
+            recon, vq_loss, _ = model(batch)
+            recon_loss = criterion(recon, batch)
+            loss = recon_loss + vq_loss
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
 
-plt.figure()
-plt.plot(ssimScores, label="Train SSIM")
-plt.plot(valSSIM,  label="Val SSIM")
-plt.legend(); plt.title("SSIM"); plt.xlabel("Epoch (val every 5)"); plt.tight_layout(); plt.show()
-            
+            batch_ssim_val = batch_ssim(batch, recon, assume_minmax=ASSUME_MINMAX)
+            epoch_loss += loss.item()
+            epoch_ssim += batch_ssim_val
+            pbar.set_postfix(loss=loss.item(), ssim=batch_ssim_val)
 
-        # ## Need to calculate SSIM here with this.
-        # ssimScore_train = ssim(batch, reconTrainImages, channel_axis=1)
-        # print(f"epoch: {epoch} Vector quantised loss {vq_loss}, reconstruction loss: {recon_loss} ssim score: {ssimScore_train}")
-    
+        avg_train_loss = epoch_loss / len(train_loader)
+        avg_train_ssim = epoch_ssim / len(train_loader)
+        train_losses.append(avg_train_loss)
+        train_ssims.append(avg_train_ssim)
+        print(f"[Train] Loss={avg_train_loss:.4f}, SSIM={avg_train_ssim:.4f}")
 
-        ## How do I store the weights here?
-        ## Is it fine to find the best one,
-        ## or should I use a subset, if so
-        # if (ssimScore_train > trainBestSSIM) :
-        #     trainBestSSIM_train = ssimScore_train
+        ## Validation 
+        if epoch % VAL_EVERY == 0:
+            model.eval()
+            val_loss, val_ssim_total = 0.0, 0.0
+            with torch.no_grad():
+                for val_batch in tqdm(val_loader, desc="Validating", leave=False):
+                    val_batch = val_batch.to(device)
+                    val_recon, val_vq_loss, _ = model(val_batch)
+                    vloss = criterion(val_recon, val_batch) + val_vq_loss
+                    val_loss += vloss.item()
+                    val_ssim_total += batch_ssim(val_batch, val_recon, assume_minmax=ASSUME_MINMAX)
 
-        ## This is when validation occurs.
-    # if (epoch % 4 == 0):
-    #     print("validation instance: " + (epoch / 20))
-    #     model.eval()
-    #     validationLoss = 0
-    #     validation_SSIM = 0
+                avg_val_loss = val_loss / len(val_loader)
+                avg_val_ssim = val_ssim_total / len(val_loader)
+                val_losses.append(avg_val_loss)
+                val_ssims.append(avg_val_ssim)
 
-    #     with torch.no_grad():
-    #         for batch in validate_loader:
-    #             batch = batch.to(device)
-    #             reconValidImages, _ = model(batch)
-    #             validation_SSIM = ssim(batch, reconValidImages)
+                print(f"[Val] Loss={avg_val_loss:.4f}, SSIM={avg_val_ssim:.4f}")
 
+                ## Save reconstructions each epoch
+                save_path = os.path.join(OUT_DIR, f"epoch_{epoch:03d}_recons.png")
+                save_recon_grid(val_batch, val_recon, save_path)
+                print(f"Saved sample reconstructions to {save_path}")
 
-    #             if (validation_SSIM > valBestSSIM) :
-    #                 valBestSSIM = validation_SSIM
-                    
+                if avg_val_ssim > best_val_ssim:
+                    best_val_ssim = avg_val_ssim
+                    torch.save(model.state_dict(), os.path.join(OUT_DIR, "vqvae_best.pth"))
 
-        
+                    #############################################################################
+                    ## Added this here for separate saving of the path to use for the predict.py file
+                    torch.save(model.state_dict(), "model.path")
+                    #############################################################################
 
-    # totalLoss += loss.item()
-    # totalReconLoss += recon_loss.item()
-    # totalVqLoss += vq_loss.item()
-    # totalSSIMScore += ssimScore_train
+                    print(f"New best model saved (SSIM={best_val_ssim:.4f})")
 
-    # avgTrainLoss = totalLoss / len(train_loader)
-    # avgReconLoss = totalReconLoss / len(train_loader)
-    # avgVqLoss = totalVqLoss / len(train_loader)
+    ## Save training curves
+    torch.save(model.state_dict(), os.path.join(OUT_DIR, "vqvae_last.pth"))
+    plt.figure()
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Val Loss")
+    plt.legend(); plt.xlabel("Epoch"); plt.title("Loss"); plt.tight_layout()
+    plt.savefig(os.path.join(OUT_DIR, "loss_curve.png")); plt.close()
 
-    # averageSSIMScore = totalSSIMScore / len(train_loader)
+    plt.figure()
+    plt.plot(train_ssims, label="Train SSIM")
+    plt.plot(val_ssims, label="Val SSIM")
+    plt.legend(); plt.xlabel("Epoch"); plt.title("SSIM"); plt.tight_layout()
+    plt.savefig(os.path.join(OUT_DIR, "ssim_curve.png")); plt.close()
 
-    # print("average trainining loss: " + avgTrainLoss)
-    # print("average reconstuction loss: " + avgReconLoss)
-    # print("average quantised vector loss: " + avgVqLoss)
-
-    # print()
-
-
-# ## Validation 
-
-# print("Undergoing Validation...")
-
-# model.eval()
-# valLossTotal = 0
-
-# with torch.nograd():
-
-#     for valBatch in validate_loader:
-#         valBatch = valBatch.to(device)
+    print(f"\nTraining complete. Outputs saved in: {OUT_DIR}")
 
 
+## Run entry point
 
-## once model is trained, run it through validation to find the one with the best
-## SSIM score.
-
-# .save(path)
-# .load
-
-
+if __name__ == "__main__":
+    main()
