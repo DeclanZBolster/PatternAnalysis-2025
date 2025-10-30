@@ -5,7 +5,7 @@ Author: Declan Bolster (46992877)
 
 This repository implemented a Vector-Quantised Variational AutoEncoder (VQ-VAE) to test the image reconstruction capabilities of the neural structure with the processed 2D slices of the HipMRI Study on Prostate Cancer as the data set. 
 
-This repositry focused specifically on the reconstruction capabilities of the VQ-VAE, not image generation or segmentation. The primary objective of this repository was to train the VQ-VAE to reconstruct the unseen test image subset of the data set with a Structural Similarity Measure (SSIM) of at least 0.6.
+This repository focused specifically on the reconstruction capabilities of the VQ-VAE, not image generation or segmentation. The primary objective of this repository was to train the VQ-VAE to reconstruct the unseen test image subset of the data set with a Structural Similarity Measure (SSIM) of at least 0.6.
 
 For further information regarding the study the data set originated from:
 https://doi.org/10.25919/45t8-p065
@@ -13,12 +13,11 @@ https://doi.org/10.25919/45t8-p065
 The paper that initially proposed the VQ-VAE:
 https://arxiv.org/abs/1711.00937
 
-(MAKE SURE TO UPDATE THIS BEFORE SUBMITTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
 - [VQ-VAE HipMRI Image Reconstruction](#vq-vae-hipmri-image-reconstruction)
   - [Project Description](#project-description)
   - [Why VQ-VAE?](#why-vq-vae)
   - [Project Outline](#project-outline)
-  - [Model Archiecture - modules.py](#model-archiecture---modulespy)
+  - [Model Architecture - modules.py](#model-architecture---modulespy)
     - [Encoder](#encoder)
     - [VectorQuantiser and CodeBook](#vectorquantiser-and-codebook)
     - [Decoder](#decoder)
@@ -32,9 +31,9 @@ https://arxiv.org/abs/1711.00937
   - [Fourth Attempt (Fine-tuning parameters)](#fourth-attempt-fine-tuning-parameters)
     - [Training and Validation](#training-and-validation)
     - [Testing](#testing-1)
-  - [Dependencies (done, but revise if everything listed is strictly necessary!!!!!!!!!!!!!)](#dependencies-done-but-revise-if-everything-listed-is-strictly-necessary)
+  - [Dependencies](#dependencies)
   - [Improvements and shortcomings](#improvements-and-shortcomings)
-  - [Replication (finished)](#replication-finished)
+  - [Replication](#replication)
   - [References](#references)
 
 
@@ -49,8 +48,15 @@ $$
 L = \underbrace{\mathbb{E}_{q(z|x)}[-\log p(x|z)]}_{\text{reconstruction loss}}
 + \underbrace{KL(q(z|x) \| p(z))}_{\text{KL divergence}}
 $$
-
-    (DEFINE EVERY VARIABLE IN THIS ABOVE FUNCTION)!!!!!!!!!!!!!!!!!!!!!!!
+**Where:**
+- \( L \) — total loss (objective function for the VAE)  
+- \( x \) — input data  
+- \( z \) — latent variable (encoded representation of \( x \))  
+- \( q(z|x) \) — encoder’s approximate posterior distribution  
+- \( p(x|z) \) — decoder’s likelihood of reconstructing \( x \) from \( z \)  
+- \( p(z) \) — prior distribution over latent variables (usually standard normal \( \mathcal{N}(0, I) \))  
+- \( \mathbb{E}_{q(z|x)}[-\log p(x|z)] \) — reconstruction loss (how well the decoder reconstructs the input)  
+- \( KL(q(z|x) \| p(z)) \) — Kullback–Leibler divergence (regularizes the latent space)
 
 This regulates the latent variables to not vary too widely between a single back-propagation. This can unfortunately also cause KL dominate the measured loss - causing the Encoder to collapse its outputs towards the prior latent space p(z).
 
@@ -66,7 +72,7 @@ This regulates the latent variables to not vary too widely between a single back
   - This is the second of two files run - returning the reconstructions generated on the test data.
 
 
-## Model Archiecture - modules.py
+## Model Architecture - modules.py
 
 ![VQ-VAE Structure](read_me_images/VQ-VAE_structure_overview.png)
 
@@ -82,7 +88,13 @@ $$
 k^* = \arg\min_k \| z_e(x) - e_k \|^2
 $$
 
-    (DEFINE EVERY VARIABLE IN THIS ABOVE FUNCTION)!!!!!!!!!!!!!!!!!!!!!!!
+**Where:**
+- \( k^* \) — index of the nearest embedding vector (the chosen code)  
+- \( k \) — index iterating over all possible codebook embeddings  
+- \( z_e(x) \) — encoder output (continuous latent vector for input \( x \))  
+- \( e_k \) — embedding vector (code) from the codebook  
+- \( \| z_e(x) - e_k \|^2 \) — squared Euclidean distance between encoder output and a codebook vector  
+- \( \arg\min_k \) — operation that selects the index \( k \) giving the minimum distance
 
 This new vector becomes the input to the Decoder, as opposed to the output of the Encoder. During backpropagation, where the image reconstruction is compared to the original image (after the Decoder output):
 $$
@@ -92,21 +104,39 @@ L =
 + \underbrace{\beta \| z_e(x) - \text{sg}[e_{k^*}] \|^2}_{\text{commitment loss}}
 $$
 
-    (DEFINE EVERY VARIABLE IN THIS ABOVE FUNCTION)!!!!!!!!!!!!!!!!!!!!!!!
+**Where:**
+- \( L \) — total loss for the VQ-VAE  
+- \( x \) — original input data  
+- \( \hat{x} \) — reconstructed output from the decoder  
+- \( z_e(x) \) — encoder output (continuous latent vector)  
+- \( e_{k^*} \) — selected embedding vector from the codebook (quantized representation)  
+- \( \text{sg}[\cdot] \) — stop-gradient operator (gradient is not propagated through this term)  
+- \( \beta \) — weighting coefficient controlling the strength of the commitment loss  
+- \( \|x - \hat{x}\|^2 \) — **reconstruction loss**, measures how well the reconstruction matches the input  
+- \( \|\text{sg}[z_e(x)] - e_{k^*}\|^2 \) — **codebook loss**, moves codebook embeddings toward encoder outputs  
+- \( \beta \|z_e(x) - \text{sg}[e_{k^*}]\|^2 \) — **commitment loss**, encourages encoder outputs to commit to a single codebook vector
 
-the gradients of the Encoder and Decoder are upgraded, and the codebook recieves gradients from the codebook loss term, of which pulls it closer to resembling the output of the Encoder.
-    - Straight-through Estimator trick:
+
+The gradients of the Encoder and Decoder are updated, and the codebook receives gradients from the codebook loss term, of which pulls it closer to resembling the output of the Encoder.
+  - Straight-through Estimator trick:
       - This is an addition to the vector quantiser that was employed in this project. It exists to improve the learning capabilities of the codebook my accounting for loss during back-propagation. During back propogation, the chain-rule is used to determine how each parameter influenced the loss. The problem is that "argmin" used to calculate Euclidean distance shown earlier is non-differentiable.
 $$
 z_q(x) = z_e(x) + \text{sg}[e_{k^*} - z_e(x)]
 $$
 
-    (DEFINE EVERY VARIABLE IN THIS ABOVE FUNCTION)!!!!!!!!!!!!!!!!!!!!!!!
+**Where:**
+- \( z_q(x) \) — quantized latent vector (used as input to the decoder)  
+- \( z_e(x) \) — encoder output (continuous latent representation of \( x \))  
+- \( e_{k^*} \) — selected embedding vector from the codebook (nearest code to \( z_e(x) \))  
+- \( \text{sg}[\cdot] \) — stop-gradient operator (prevents gradient flow through its argument)  
+- \( e_{k^*} - z_e(x) \) — difference between the chosen codebook vector and the encoder output  
+- The expression ensures gradients flow only through the encoder while keeping \( e_{k^*} \) fixed during backpropagation
 
-Therefore, it is treated as = 1 (no gradient) when differentiated in order for the Encoder to recieve a more representative loss during back propagation - improving the learning of the codebook.
+
+Therefore, it is treated as = 1 (no gradient) when differentiated in order for the Encoder to receive a more representative loss during back propagation - improving the learning of the codebook.
 
 ### Decoder
-The Decoder recieves the vector from the codebook, and then performs a series of upsamplings to return the quantised latent space back to the original image; functionally making it a mirrored CNN structure to the Encoder.
+The Decoder receives the vector from the codebook, and then performs a series of upsamplings to return the quantised latent space back to the original image; functionally making it a mirrored CNN structure to the Encoder.
 
 
 ## Data-preprocessing
@@ -128,9 +158,17 @@ $$
 \text{inImage} = \frac{(\text{inImage} - \min)}{(\max - \min + 1\times10^{-8})}
 $$
 
-(DEFINE EVERY VARIABLE IN THIS ABOVE FUNCTION)!!!!!!!!!!!!!!!!!!!!!!!
+**Where:**
+- \( \text{inImage} \) — the input image being normalized  
+- \( \min \) — the minimum pixel intensity value in the image (or dataset)  
+- \( \max \) — the maximum pixel intensity value in the image (or dataset)  
+- \( 1 \times 10^{-8} \) — small constant added for numerical stability to prevent division by zero  
+- The formula performs **Min–Max normalization**, rescaling pixel values to the range \([0, 1]\)
+
 
 This unfortunately still lead to a model collapse - behaving worse than the previous attempt.
+
+
 ![Second_Attempt_Reconstruction](read_me_images/second_attempt_image_recon.png)
 
 This was attributed to the use of batchNorm2d in the residual, Encoder, and Decoder blocks. BatchNorm2d behaves by normalising each channel across the batch and spatial dimensions.
@@ -140,7 +178,16 @@ $$
 y^c = \gamma_c \hat{x}^c + \beta_c
 $$
 
-(DEFINE EVERY VARIABLE IN THIS ABOVE FUNCTION)!!!!!!!!!!!!!!!!!!!!!!!
+**Where:**
+- \( x^c \) — input activation for channel \( c \)  
+- \( \hat{x}^c \) — normalized activation for channel \( c \)  
+- \( \mu_c \) — mean of activations in channel \( c \) (computed over the batch and spatial dimensions)  
+- \( \sigma_c \) — standard deviation of activations in channel \( c \) (computed over the batch and spatial dimensions)  
+- \( \gamma_c \) — learnable scale parameter for channel \( c \)  
+- \( \beta_c \) — learnable shift (bias) parameter for channel \( c \)  
+- \( y^c \) — output activation for channel \( c \) after normalization  
+- The equation standardizes each channel’s activations and then applies an affine transformation (\( \gamma_c, \beta_c \)) to preserve representational flexibility
+
 
 This can lead to BatchNorm2d to squish or shift the differences between channels unpredictably if there is batch variation - causing a collapse to the nearest embedding.
 Why this was not visible in prior attempt while having a good SSIM suggested that VQ loss, not the reconstruction loss was fluctuating, and could therefore be very likely attributed to specifically codeBook collapse.
@@ -149,10 +196,22 @@ Why this was not visible in prior attempt while having a good SSIM suggested tha
 
 To resolve, the previous collapse, instanceNorm2d was instead used for normalisation within CNN blocks.
 
+$$
+\hat{x}_{n,c,h,w} = \frac{x_{n,c,h,w} - \mu_{n,c}}{\sqrt{\sigma_{n,c}^2 + \epsilon}}, \quad
+y_{n,c,h,w} = \gamma_c \hat{x}_{n,c,h,w} + \beta_c
+$$
 
-(add markdown of it here) !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-(DEFINE EVERY VARIABLE IN THIS ABOVE FUNCTION)!!!!!!!!!!!!!!!!!!!!!!!
+**Where:**
+- \( x_{n,c,h,w} \) — input activation for sample \( n \), channel \( c \), at spatial position \( (h, w) \)  
+- \( \hat{x}_{n,c,h,w} \) — normalized activation  
+- \( \mu_{n,c} \) — mean of channel \( c \) for instance \( n \) (computed across spatial dimensions \( h, w \))  
+- \( \sigma_{n,c}^2 \) — variance of channel \( c \) for instance \( n \)  
+- \( \epsilon \) — small constant added for numerical stability  
+- \( \gamma_c \) — learnable scale parameter for channel \( c \)  
+- \( \beta_c \) — learnable bias (shift) parameter for channel \( c \)  
+- \( y_{n,c,h,w} \) — final normalized and scaled output  
+
 
 ### Training & Validation
 
@@ -173,7 +232,7 @@ This model showed promising reconstruction and SSIM score.
 
 Although the loss behaviour was better than previous attempts, it still fluctuated between 0 and 1 before settling close to 1. Upon retraining while observing the VQ loss and reconstruction loss separately, it was the VQ loss that was causing the fluctuation. Which, after testing with different learning rates, suggested that it was how the codeBook itself was behaving.
 
-| **SSIM Averarge** | **Lowest SSIM** | **Highest SSIM** |
+| **SSIM Average** | **Lowest SSIM** | **Highest SSIM** |
 |-------------------|-----------------|------------------|
 | 0.73              | 0.70            | 0.76             |
 
@@ -193,11 +252,13 @@ This did successfully stabilise loss, but at ~0.24, which indicated some room fo
 
 ![loss](read_me_images/attempt4_lossCurve_train.png)
 
-This did successfully stabilise loss, but at ~0.24, which indicated some room for improvement
+This also caused a small but signifcant reduction in SSIM, which could have been attributed to a reduced number of learned pixel mappings being considered with the reduction in embedding, creating a slightly poorer reconstruction; as oppsoed to a model that has more vectors in its latent space (codebook)
 
 ![ssim](read_me_images/attempt4_SSIMcurve_train.png)
 
 ### Testing
+
+Although a smaller SSIM, this more stable VQ-VAE still met the project criteria with even its lowest SSIM exceeding the 0.6 for the unseen test data.
 
  **SSIM Averarge** | **Lowest SSIM** | **Highest SSIM** |
 |-------------------|-----------------|------------------|
@@ -209,7 +270,7 @@ This did successfully stabilise loss, but at ~0.24, which indicated some room fo
 |![orig](read_me_images/attempt4_predict_original2.png)|![recon](read_me_images/attempt4_predict_reconstruction2.png)|
 
 
-## Dependencies (done, but revise if everything listed is strictly necessary!!!!!!!!!!!!!)
+## Dependencies
 This project was run on python 3.13.9
 It is recommended to not use the most recent 3.14 python version or the 3.15 pre-release while these versions are in their current stages, as they seemingly caused issues to install the prebuilt wheel/dependenies that when attempting to resolve with C++ Build Tools on Windows caused more trouble than it is worth. 
 
@@ -247,24 +308,21 @@ It is recommended to not use the most recent 3.14 python version or the 3.15 pre
 | typing_extensions| 4.15.0 |
 
 ## Improvements and shortcomings
-Although the final two attempts did meet the SSIM requirement, the rise in loss in general was concerning and not expected of the model. At the very least it stabilised as the epochs progressed in the final attempt, and it was identified across both instances that it was VQ loss. Therefore, the codebook 
+Although the final two attempts did meet the SSIM requirement, the rise in loss in general was concerning and not expected of the model. At the very least it stabilised as the epochs progressed in both attempts although at a better loss in attempt 4, and it was identified across both instances that it was VQ loss. Therefore, the codebook was experiencing some instability.
+This is a general consequence of having a codebook with a greater diversity of vectors for discrete latent representation, which is difficulty training although yielding relatively high accuracy. 
+Consequently, potentially investigation the perplexity of the model to determine how much of the codebook is being used, and if the increased number of embeddings are strictly necessary. Additionally, the use of the learning rate scheduler reduceLROnPlateau may be effective when the learning rate plateaus.
 
-(POTENTIALLY ALSO TALKING ABOUT HAVING A BETTER LEARNING RATE SCHEDULER)
-
-
-(ALSO TALK ABOUT THE ATTEMPTS 3 AND 4 AND HOW THEY BOTH ACHIEVE )
-
-## Replication (finished)
+## Replication
 
 1. Download HipMRI data locally (the slices, not the segmentations).
 
-2. Open train.py and replace the pathway variables with the file locations of the train and validation nifti files you have previously downloaded.
+2. Open train.py and replace the pathway variables with the file locations of the train and validation nifti files you have previously downloaded. Also, include the paths of the outputs for both the test as well as training and validation parts of the project
 
 3. Run train.py, everything needed is already in __main__.
 
-4. The best model will be saved subsequently as "model.pth", which will be loaded in predict.py automatically. Replace the test set file location with where you have locally saved the test file of nifti files.
+4. The best model will be saved subsequently as "model.pth", which will be loaded in predict.py automatically. Replace the test set file location with where you have locally saved the test file of nifti files. Then replace the out directory with the file location intended for the reconstructions to be sent to
 
-5. Run predict.py
+5. Run predict.py, 
 
 ## References
 
