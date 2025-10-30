@@ -1,6 +1,11 @@
+"""
+This file concerns parsing the nifti files for the project, so that they can be individually accessed and uniformly
+resized.
+"""
+
+
 import torch
 import glob 
-
 
 import numpy as np
 import nibabel as nib
@@ -12,7 +17,10 @@ from torch.utils.data import DataLoader, Dataset
 
 import matplotlib.pyplot as plt
 
-
+"""
+A trimmed version of a method originally provided by Shakes that 
+processes nifiti file images.
+"""
 # Load medical image functions
 def load_data_2D(imageNames, normImage=False, dtype=np.float32,
                  early_stop=False):
@@ -50,11 +58,12 @@ def load_data_2D(imageNames, normImage=False, dtype=np.float32,
         inImage = inImage.astype(dtype)
 
         if normImage:
+            # Normalising the image
             min = inImage.min()
             max = inImage.max()
 
             inImage = (inImage - min) / (max - min + 1e-8)
-
+          
 
         if i > 20 and early_stop:
             break
@@ -76,20 +85,9 @@ class MRI_dataset(Dataset):
     
     def __getitem__(self, index):
 
-        img = self.images[index]
-        img = torch.from_numpy(img).float()
-        img = img.unsqueeze(0)
+        img = self.images[index] ## Grabbing individual image
+        img = torch.from_numpy(img).float() ## Creating pytorch tensor representative of image
+        img = img.unsqueeze(0) ## Adding additional (1) dimension in order to be greyscale
         return img
-    
 
-if __name__ == "__main__":
     
-    # dataSet = MRI_dataset(path="C:/Users/s4699287/Desktop/A3_dataStorage/keras_slices_train", earlyStop=False)
-    dataSet = MRI_dataset(path="C:/Users/s4699287/Desktop/A3_LocalData/keras_slices_train", earlyStop=False)
-    img_tensor = dataSet.images[0]
-    print("Image shape: ", img_tensor.shape)
-
-    plt.imshow(img_tensor, cmap='grey')
-    plt.title("Example MRI Slice")
-    plt.axis("off")
-    plt.show()
