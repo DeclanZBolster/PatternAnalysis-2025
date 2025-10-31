@@ -86,9 +86,8 @@ Residual Block:
 
 ### VectorQuantiser and CodeBook
 This converts the continuous representation that the Encoder returns into a discrete representation of the latent space. This discrete latent space is the CodeBook - a trainable dictionary that is iterated through after the downsampling of the Encoder to find which of the vectors it is instantiated with is most similar to the Encoder's output. This is achieved by comparing the Euclidean distances of each of these vectors:
-$$
-k^* = \arg\min_k \| z_e(x) - e_k \|^2
-$$
+
+$$ k^* = \arg\min_k \| z_e(x) - e_k \|^2 $$
 
 **Where:**
 - $k^*$ — index of the nearest embedding vector (the chosen code)  
