@@ -44,10 +44,8 @@ These problems include a generally blurry reconstruction of images:
 The latent space being continuous causes the Decoder to often produced averaged outputs when multiple possible reconstructions exists for a particular feature of an image i.e. blurring a combination of possible digits.
 
 The measure of loss in a traditional VAE places particular emphasis on how far the encoder's latent distribution q(z|x)  is from the prior distribution of the latent space p(z), the KL term. 
-$$
-L = \underbrace{\mathbb{E}_{q(z|x)}[-\log p(x|z)]}_{\text{reconstruction loss}}
-+ \underbrace{KL(q(z|x) \| p(z))}_{\text{KL divergence}}
-$$
+
+$$L = \underbrace{\mathbb{E}_{q(z|x)}[-\log p(x|z)]}_{\text{reconstruction loss}} + \underbrace{KL(q(z|x) \| p(z))}_{\text{KL divergence}}$$
 
 **Where:**
 - $L$ — total loss (objective function for the VAE)  
