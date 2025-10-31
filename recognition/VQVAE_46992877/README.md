@@ -99,12 +99,8 @@ $$ k^* = \arg\min_k \| z_e(x) - e_k \|^2 $$
 
 
 This new vector becomes the input to the Decoder, as opposed to the output of the Encoder. During backpropagation, where the image reconstruction is compared to the original image (after the Decoder output), loss is calculated as so:
-$$
-L =
-\underbrace{\|x - \hat{x}\|^2}_{\text{reconstruction loss}}
-+ \underbrace{\| \text{sg}[z_e(x)] - e_{k^*} \|^2}_{\text{codebook loss}}
-+ \underbrace{\beta \| z_e(x) - \text{sg}[e_{k^*}] \|^2}_{\text{commitment loss}}
-$$
+
+$$ L = \underbrace{\|x - \hat{x}\|^2}_{\text{reconstruction loss}} + \underbrace{\| \text{sg}[z_e(x)] - e_{k^*} \|^2}_{\text{codebook loss}} + \underbrace{\beta \| z_e(x) - \text{sg}[e_{k^*}] \|^2}_{\text{commitment loss}} $$
 
 **Where:**
 - $L$ — total loss for the VQ-VAE  
