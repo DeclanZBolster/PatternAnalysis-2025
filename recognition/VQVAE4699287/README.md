@@ -43,22 +43,24 @@ The VQ-VAE solves the limitations of the traditional VAE, which has a continuous
 These problems include a generally blurry reconstruction of images:
 The latent space being continuous causes the Decoder to often produced averaged outputs when multiple possible reconstructions exists for a particular feature of an image i.e. blurring a combination of possible digits.
 
-The measured of loss in a traditional VAE places particular emphasis on how far the encoder's latent distribution q(z|x)  is from the prior distribution of the latent space p(z), the KL term. 
+The measure of loss in a traditional VAE places particular emphasis on how far the encoder's latent distribution q(z|x)  is from the prior distribution of the latent space p(z), the KL term. 
 $$
 L = \underbrace{\mathbb{E}_{q(z|x)}[-\log p(x|z)]}_{\text{reconstruction loss}}
 + \underbrace{KL(q(z|x) \| p(z))}_{\text{KL divergence}}
 $$
-**Where:**
-- \( L \) — total loss (objective function for the VAE)  
-- \( x \) — input data  
-- \( z \) — latent variable (encoded representation of \( x \))  
-- \( q(z|x) \) — encoder’s approximate posterior distribution  
-- \( p(x|z) \) — decoder’s likelihood of reconstructing \( x \) from \( z \)  
-- \( p(z) \) — prior distribution over latent variables (usually standard normal \( \mathcal{N}(0, I) \))  
-- \( \mathbb{E}_{q(z|x)}[-\log p(x|z)] \) — reconstruction loss (how well the decoder reconstructs the input)  
-- \( KL(q(z|x) \| p(z)) \) — Kullback–Leibler divergence (regularizes the latent space)
 
-This regulates the latent variables to not vary too widely between a single back-propagation. This can unfortunately also cause KL dominate the measured loss - causing the Encoder to collapse its outputs towards the prior latent space p(z).
+**Where:**
+- $L$ — total loss (objective function for the VAE)  
+- $x$ — input data  
+- $z$ — latent variable (encoded representation of $x$)  
+- $q(z \mid x)$ — encoder’s approximate posterior distribution  
+- $p(x \mid z)$ — decoder’s likelihood of reconstructing $x$ from $z$  
+- $p(z)$ — prior distribution over latent variables (usually standard normal $\mathcal{N}(0, I)$)  
+- $\mathbb{E}_{q(z \mid x)}[-\log p(x \mid z)]$ — reconstruction loss (how well the decoder reconstructs the input)  
+- $KL(q(z \mid x) \| p(z))$ — Kullback–Leibler divergence (regularizes the latent space)
+
+
+This regulates the latent variables to not vary too widely between a single back-propagation. This can unfortunately also cause KL to dominate the measured loss - causing the Encoder to collapse its outputs towards the prior latent space p(z).
 
 
 ## Project Outline
@@ -77,10 +79,12 @@ This regulates the latent variables to not vary too widely between a single back
 ![VQ-VAE Structure](read_me_images/VQ-VAE_structure_overview.png)
 
 ### Encoder
-The Encoder functions as a convolutional neural network that downsamples an image into a feature map of vectors. Since an Encoder downsamples to a latent space, having this latent space be a vector codebook causes said space to be "quantised".
-    - Residual Block:
+The Encoder functions as a convolutional neural (CNN) network that downsamples an image into a feature map of vectors. Since an Encoder downsamples to a latent space, having this latent space be a vector codebook causes said space to be "quantised".
+
+Residual Block:
 ![residualBlockRep](read_me_images/residual_block_rep.png)
-      - This is an optional addition to an encoder that prevents information being "lost" between layers of downsampling within the the Encoder and adding depth to the network. This functions much like a conventional block that applies convolution, normalisation, and non-linear activation, but then adds a the input of the block to the output, skipping all these layers - a skip connection. This prevents the mentioned loss of minor features between layers.
+
+  This is an optional addition to an encoder that prevents information being "lost" between layers of downsampling within the the Encoder and adding depth to the network. This functions much like a conventional block that applies convolution, normalisation, and non-linear activation, but then adds the input of the block to the output, skipping all these layers - a skip connection. This prevents the mentioned loss of minor features between layers.
 
 ### VectorQuantiser and CodeBook
 This converts the continuous representation that the Encoder returns into a discrete representation of the latent space. This discrete latent space is the CodeBook - a trainable dictionary that is iterated through after the downsampling of the Encoder to find which of the vectors it is instantiated with is most similar to the Encoder's output. This is achieved by comparing the Euclidean distances of each of these vectors:
@@ -89,14 +93,15 @@ k^* = \arg\min_k \| z_e(x) - e_k \|^2
 $$
 
 **Where:**
-- \( k^* \) — index of the nearest embedding vector (the chosen code)  
-- \( k \) — index iterating over all possible codebook embeddings  
-- \( z_e(x) \) — encoder output (continuous latent vector for input \( x \))  
-- \( e_k \) — embedding vector (code) from the codebook  
-- \( \| z_e(x) - e_k \|^2 \) — squared Euclidean distance between encoder output and a codebook vector  
-- \( \arg\min_k \) — operation that selects the index \( k \) giving the minimum distance
+- $k^*$ — index of the nearest embedding vector (the chosen code)  
+- $k$ — index iterating over all possible codebook embeddings  
+- $z_e(x)$ — encoder output (continuous latent vector for input $x$)  
+- $e_k$ — embedding vector (code) from the codebook  
+- $\| z_e(x) - e_k \|^2$ — squared Euclidean distance between encoder output and a codebook vector  
+- $\arg\min_k$ — operation that selects the index $k$ giving the minimum distance
 
-This new vector becomes the input to the Decoder, as opposed to the output of the Encoder. During backpropagation, where the image reconstruction is compared to the original image (after the Decoder output):
+
+This new vector becomes the input to the Decoder, as opposed to the output of the Encoder. During backpropagation, where the image reconstruction is compared to the original image (after the Decoder output), loss is calculated as so:
 $$
 L =
 \underbrace{\|x - \hat{x}\|^2}_{\text{reconstruction loss}}
@@ -105,32 +110,33 @@ L =
 $$
 
 **Where:**
-- \( L \) — total loss for the VQ-VAE  
-- \( x \) — original input data  
-- \( \hat{x} \) — reconstructed output from the decoder  
-- \( z_e(x) \) — encoder output (continuous latent vector)  
-- \( e_{k^*} \) — selected embedding vector from the codebook (quantized representation)  
-- \( \text{sg}[\cdot] \) — stop-gradient operator (gradient is not propagated through this term)  
-- \( \beta \) — weighting coefficient controlling the strength of the commitment loss  
-- \( \|x - \hat{x}\|^2 \) — **reconstruction loss**, measures how well the reconstruction matches the input  
-- \( \|\text{sg}[z_e(x)] - e_{k^*}\|^2 \) — **codebook loss**, moves codebook embeddings toward encoder outputs  
-- \( \beta \|z_e(x) - \text{sg}[e_{k^*}]\|^2 \) — **commitment loss**, encourages encoder outputs to commit to a single codebook vector
+- $L$ — total loss for the VQ-VAE  
+- $x$ — original input data  
+- $\hat{x}$ — reconstructed output from the decoder  
+- $z_e(x)$ — encoder output (continuous latent vector)  
+- $e_{k^*}$ — selected embedding vector from the codebook (quantized representation)  
+- $\text{sg}[\cdot]$ — stop-gradient operator (gradient is not propagated through this term)  
+- $\beta$ — weighting coefficient controlling the strength of the commitment loss  
+- $\|x - \hat{x}\|^2$ — **reconstruction loss**, measures how well the reconstruction matches the input  
+- $\|\text{sg}[z_e(x)] - e_{k^*}\|^2$ — **codebook loss**, moves codebook embeddings toward encoder outputs  
+- $\beta \|z_e(x) - \text{sg}[e_{k^*}]\|^2$ — **commitment loss**, encourages encoder outputs to commit to a single codebook vector
+
 
 
 The gradients of the Encoder and Decoder are updated, and the codebook receives gradients from the codebook loss term, of which pulls it closer to resembling the output of the Encoder.
   - Straight-through Estimator trick:
-      - This is an addition to the vector quantiser that was employed in this project. It exists to improve the learning capabilities of the codebook my accounting for loss during back-propagation. During back propogation, the chain-rule is used to determine how each parameter influenced the loss. The problem is that "argmin" used to calculate Euclidean distance shown earlier is non-differentiable.
+      - This is an addition to the vector quantiser that was employed in this project. It exists to improve the learning capabilities of the codebook by accounting for loss during back-propagation. During back propogation, the chain-rule is used to determine how each parameter influenced the loss. The problem is that "argmin" used to calculate Euclidean distance shown earlier is non-differentiable.
 $$
 z_q(x) = z_e(x) + \text{sg}[e_{k^*} - z_e(x)]
 $$
 
 **Where:**
-- \( z_q(x) \) — quantized latent vector (used as input to the decoder)  
-- \( z_e(x) \) — encoder output (continuous latent representation of \( x \))  
-- \( e_{k^*} \) — selected embedding vector from the codebook (nearest code to \( z_e(x) \))  
-- \( \text{sg}[\cdot] \) — stop-gradient operator (prevents gradient flow through its argument)  
-- \( e_{k^*} - z_e(x) \) — difference between the chosen codebook vector and the encoder output  
-- The expression ensures gradients flow only through the encoder while keeping \( e_{k^*} \) fixed during backpropagation
+- $z_q(x)$ — quantized latent vector (used as input to the decoder)  
+- $z_e(x)$ — encoder output (continuous latent representation of $x$)  
+- $e_{k^*}$ — selected embedding vector from the codebook (nearest code to $z_e(x)$)  
+- $\text{sg}[\cdot]$ — stop-gradient operator (prevents gradient flow through its argument)  
+- $e_{k^*} - z_e(x)$ — difference between the chosen codebook vector and the encoder output  
+- The expression ensures gradients flow only through the encoder while keeping $e_{k^*}$ fixed during backpropagation
 
 
 Therefore, it is treated as = 1 (no gradient) when differentiated in order for the Encoder to receive a more representative loss during back propagation - improving the learning of the codebook.
@@ -159,11 +165,11 @@ $$
 $$
 
 **Where:**
-- \( \text{inImage} \) — the input image being normalized  
-- \( \min \) — the minimum pixel intensity value in the image (or dataset)  
-- \( \max \) — the maximum pixel intensity value in the image (or dataset)  
-- \( 1 \times 10^{-8} \) — small constant added for numerical stability to prevent division by zero  
-- The formula performs **Min–Max normalization**, rescaling pixel values to the range \([0, 1]\)
+- $\text{inImage}$ — the input image being normalized  
+- $\min$ — the minimum pixel intensity value in the image (or dataset)  
+- $\max$ — the maximum pixel intensity value in the image (or dataset)  
+- $1 \times 10^{-8}$ — small constant added for numerical stability to prevent division by zero  
+- The formula performs **Min–Max normalization**, rescaling pixel values to the range $[0, 1]$
 
 
 This unfortunately still lead to a model collapse - behaving worse than the previous attempt.
@@ -179,18 +185,18 @@ y^c = \gamma_c \hat{x}^c + \beta_c
 $$
 
 **Where:**
-- \( x^c \) — input activation for channel \( c \)  
-- \( \hat{x}^c \) — normalized activation for channel \( c \)  
-- \( \mu_c \) — mean of activations in channel \( c \) (computed over the batch and spatial dimensions)  
-- \( \sigma_c \) — standard deviation of activations in channel \( c \) (computed over the batch and spatial dimensions)  
-- \( \gamma_c \) — learnable scale parameter for channel \( c \)  
-- \( \beta_c \) — learnable shift (bias) parameter for channel \( c \)  
-- \( y^c \) — output activation for channel \( c \) after normalization  
-- The equation standardizes each channel’s activations and then applies an affine transformation (\( \gamma_c, \beta_c \)) to preserve representational flexibility
+- $x^c$ — input activation for channel $c$  
+- $\hat{x}^c$ — normalized activation for channel $c$  
+- $\mu_c$ — mean of activations in channel $c$ (computed over the batch and spatial dimensions)  
+- $\sigma_c$ — standard deviation of activations in channel $c$ (computed over the batch and spatial dimensions)  
+- $\gamma_c$ — learnable scale parameter for channel $c$  
+- $\beta_c$ — learnable shift (bias) parameter for channel $c$  
+- $y^c$ — output activation for channel $c$ after normalization  
+- The equation standardizes each channel’s activations and then applies an affine transformation ($\gamma_c$, $\beta_c$) to preserve representational flexibility
 
 
 This can lead to BatchNorm2d to squish or shift the differences between channels unpredictably if there is batch variation - causing a collapse to the nearest embedding.
-Why this was not visible in prior attempt while having a good SSIM suggested that VQ loss, not the reconstruction loss was fluctuating, and could therefore be very likely attributed to specifically codeBook collapse.
+Why this was not visible in the prior attempt while having a good SSIM suggested that VQ loss, not the reconstruction loss was fluctuating, and could therefore be very likely attributed to specifically codeBook collapse. Which was only now visible because normalisation was semi-working
 
 ## Third Attempt (Functioning model meeting expectations, but with 0-1 loss fluctuation)
 
@@ -201,16 +207,16 @@ $$
 y_{n,c,h,w} = \gamma_c \hat{x}_{n,c,h,w} + \beta_c
 $$
 
-
 **Where:**
-- \( x_{n,c,h,w} \) — input activation for sample \( n \), channel \( c \), at spatial position \( (h, w) \)  
-- \( \hat{x}_{n,c,h,w} \) — normalized activation  
-- \( \mu_{n,c} \) — mean of channel \( c \) for instance \( n \) (computed across spatial dimensions \( h, w \))  
-- \( \sigma_{n,c}^2 \) — variance of channel \( c \) for instance \( n \)  
-- \( \epsilon \) — small constant added for numerical stability  
-- \( \gamma_c \) — learnable scale parameter for channel \( c \)  
-- \( \beta_c \) — learnable bias (shift) parameter for channel \( c \)  
-- \( y_{n,c,h,w} \) — final normalized and scaled output  
+- $x_{n,c,h,w}$ — input activation for sample $n$, channel $c$, at spatial position $(h, w)$  
+- $\hat{x}_{n,c,h,w}$ — normalized activation  
+- $\mu_{n,c}$ — mean of channel $c$ for instance $n$ (computed across spatial dimensions $h, w$)  
+- $\sigma_{n,c}^2$ — variance of channel $c$ for instance $n$  
+- $\epsilon$ — small constant added for numerical stability  
+- $\gamma_c$ — learnable scale parameter for channel $c$  
+- $\beta_c$ — learnable bias (shift) parameter for channel $c$  
+- $y_{n,c,h,w}$ — final normalized and scaled output
+
 
 
 ### Training & Validation
@@ -226,11 +232,13 @@ This model showed promising reconstruction and SSIM score.
 
 ![SSIM_score_across_epochs_training](read_me_images/ssim_curve_training.png)
 
+Although this fluctuation and rise in loss was unusual for the model, but the fact it stabilised and the high SSIM score that although somewhat unstable, the model was improving.
+
 [Attempt3_loss_graph](read_me_images/loss_curve_attempt3.png)
 
 ### Testing
 
-Although the loss behaviour was better than previous attempts, it still fluctuated between 0 and 1 before settling close to 1. Upon retraining while observing the VQ loss and reconstruction loss separately, it was the VQ loss that was causing the fluctuation. Which, after testing with different learning rates, suggested that it was how the codeBook itself was behaving.
+Although the loss behaviour was better than previous attempts, it still fluctuated between 0 and 1 before settling close to 1. Upon retraining while observing the VQ loss and reconstruction loss separately, it was the VQ loss that was causing the fluctuation. Which, after testing with different learning rates with no change, suggested that it was how the codeBook itself was behaving that caused this instability.
 
 | **SSIM Average** | **Lowest SSIM** | **Highest SSIM** |
 |-------------------|-----------------|------------------|
@@ -309,8 +317,8 @@ It is recommended to not use the most recent 3.14 python version or the 3.15 pre
 
 ## Improvements and shortcomings
 Although the final two attempts did meet the SSIM requirement, the rise in loss in general was concerning and not expected of the model. At the very least it stabilised as the epochs progressed in both attempts although at a better loss in attempt 4, and it was identified across both instances that it was VQ loss. Therefore, the codebook was experiencing some instability.
-This is a general consequence of having a codebook with a greater diversity of vectors for discrete latent representation, which is difficulty training although yielding relatively high accuracy. 
-Consequently, potentially investigation the perplexity of the model to determine how much of the codebook is being used, and if the increased number of embeddings are strictly necessary. Additionally, the use of the learning rate scheduler reduceLROnPlateau may be effective when the learning rate plateaus.
+This is a general consequence of having a codebook with a greater diversity of vectors for discrete latent representation, which is difficult to train, although yielding relatively high accuracy. 
+Consequently, potentially investigation the perplexity of the model to determine how much of the codebook is being used, and if the increased number of embeddings are strictly necessary would be a worthwhile pursuit. Additionally, the use of the learning rate scheduler reduceLROnPlateau may be effective when the learning rate plateaus.
 
 ## Replication
 
@@ -322,7 +330,7 @@ Consequently, potentially investigation the perplexity of the model to determine
 
 4. The best model will be saved subsequently as "model.pth", which will be loaded in predict.py automatically. Replace the test set file location with where you have locally saved the test file of nifti files. Then replace the out directory with the file location intended for the reconstructions to be sent to
 
-5. Run predict.py, 
+5. Run predict.py (this is the driver script)
 
 ## References
 
