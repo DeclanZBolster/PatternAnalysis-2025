@@ -103,8 +103,12 @@ This new vector becomes the input to the Decoder, as opposed to the output of th
 see here
 
 $$
-L = \|x - \hat{x}\|^2_{\text{(reconstruction loss)}} + \| \mathrm{sg}\!\left[z_e(x)\right] - e_{k^*} \|^2_{\text{(codebook loss)}} + \beta \, \| z_e(x) - \mathrm{sg}\!\left[e_{k^*}\right] \|^2_{\text{(commitment loss)}}
+L = \|x - \hat{x}\|^2_{\text{(reconstruction loss)}} \\
++ \| \mathrm{sg}\!\left[z_e(x)\right] - e_{k^*} \|^2_{\text{(codebook loss)}} \\
++ \beta \, \| z_e(x) - \mathrm{sg}\!\left[e_{k^*}\right] \|^2_{\text{(commitment loss)}}
 $$
+
+
 
 
 
