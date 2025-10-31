@@ -100,15 +100,8 @@ $$ k^* = \arg\min_k \| z_e(x) - e_k \|^2 $$
 
 This new vector becomes the input to the Decoder, as opposed to the output of the Encoder. During backpropagation, where the image reconstruction is compared to the original image (after the Decoder output), loss is calculated as so:
 
-see here
 
-$$
-L = \|x - \hat{x}\|^2_{\text{(reconstruction loss)}} \\
-+ \| \mathrm{sg}\!\left[z_e(x)\right] - e_{k^*} \|^2_{\text{(codebook loss)}} \\
-+ \beta \, \| z_e(x) - \mathrm{sg}\!\left[e_{k^*}\right] \|^2_{\text{(commitment loss)}}
-$$
-
-
+![fixing_in_line](read_me_images/fixing_inline.png)
 
 
 
