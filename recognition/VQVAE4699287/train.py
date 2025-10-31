@@ -4,8 +4,22 @@ This file receives the data sets of train, validate, and test.
 The VQ-VAE structure adapts to training and intermittent validation
 for effective reconstruction. Which is tested against the test data
 set the model has not previously seen.
-"""
 
+
+Includes:
+    - batch_ssim
+    - save_recon_grid
+    - save_batch_images
+    - main()
+
+Handles:
+    - Plots SSIM 
+    - Plots loss 
+    - returns SSIM range
+
+
+Author: Declan Bolster
+"""
 
 
 import os

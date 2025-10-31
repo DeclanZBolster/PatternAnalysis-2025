@@ -1,8 +1,12 @@
 """
 VQ-VAE structure, containing its sub-components.
+    - ResidualBlock
     - Encoder
     - Decoder
-    - CodeBook
+    - VectorQuantiser
+    - VQVAE
+
+Author: Declan Bolster
 """
 
 

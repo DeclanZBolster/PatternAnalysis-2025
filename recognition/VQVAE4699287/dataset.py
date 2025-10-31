@@ -1,6 +1,13 @@
 """
+dataset.py
 This file concerns parsing the nifti files for the project, so that they can be individually accessed and uniformly
 resized.
+
+Includes:
+    - load_data_2D
+    - MRI_dataset
+
+Author: Declan Bolster
 """
 
 

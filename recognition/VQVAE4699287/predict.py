@@ -2,6 +2,19 @@
 This file loads the best model weights from the training and validation
 data sets. The test data is then passed to it, and a sample of the
 outputs are saved to a local directory.
+
+Includes:
+    - batch_ssim
+    - save_recon_grid
+    - save_batch_images
+    - main()
+
+Handles:
+    - Generating reconstruction of test set
+    - Returning SSIM spread
+    - Average loss
+
+Author: Declan Bolster
 """
 
 
@@ -181,6 +194,7 @@ def main():
     print(f"\nAvg SSIM: {avg_ssim:.6f}")
     print(f"\nLowest SSIM score: {lowestPredictSSIM}")
     print(f"\nHighest SSIM score: {highestPredictSSIM}")
+    print(f"\nAverage loss: {avg_loss}")
 
 
 
