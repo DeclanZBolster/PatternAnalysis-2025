@@ -100,7 +100,17 @@ $$ k^* = \arg\min_k \| z_e(x) - e_k \|^2 $$
 
 This new vector becomes the input to the Decoder, as opposed to the output of the Encoder. During backpropagation, where the image reconstruction is compared to the original image (after the Decoder output), loss is calculated as so:
 
-$$ L = \underbrace{\|x - \hat{x}\|^2}_{\text{reconstruction loss}} + \underbrace{\| \text{sg}[z_e(x)] - e_{k^*} \|^2}_{\text{codebook loss}} + \underbrace{\beta \| z_e(x) - \text{sg}[e_{k^*}] \|^2}_{\text{commitment loss}} $$
+see here
+
+$$
+L = \|x - \hat{x}\|^2_{\text{(reconstruction loss)}}
++ \| \mathrm{sg}\!\left[z_e(x)\right] - e_{k^*} \|^2_{\text{(codebook loss)}}
++ \beta \, \| z_e(x) - \mathrm{sg}\!\left[e_{k^*}\right] \|^2_{\text{(commitment loss)}}
+$$
+
+
+
+
 
 **Where:**
 - $L$ — total loss for the VQ-VAE  
@@ -153,9 +163,8 @@ This was a relatively generic VQ-VAE structure, but still had the residual block
 
 ## Second Attempt (Complete Model Collapse)
 After attempting to normalise the images by setting any zero numpy arrays representing an image in the load_data_2d method in dataset.py to zero while keeping the rest of the numpy arrays the same caused the model to collapse, with an SSIM not exceeding 0.1 and a continuously rising loss. This was because the sigmoid in the decoder was expecting a [0, 1] range, so the normalisation was modified to: 
-$$
-\text{inImage} = \frac{(\text{inImage} - \min)}{(\max - \min + 1\times10^{-8})}
-$$
+
+$$ \text{inImage} = \frac{(\text{inImage} - \min)}{(\max - \min + 1\times10^{-8})} $$
 
 **Where:**
 - $\text{inImage}$ — the input image being normalized  
